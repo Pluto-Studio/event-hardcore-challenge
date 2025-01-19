@@ -9,6 +9,6 @@ import java.util.*
 data class UserModel(
     @Serializable(JavaUuidBsonSerializer::class) val uniqueId: UUID,
     val isInChallenge: Boolean = false,
-    val failedTimes: Int = 0,
+    val failedRounds: Int = 0,
     @Serializable(BigDecimalSerializer::class) val coin: BigDecimal = BigDecimal.ZERO,
 )
