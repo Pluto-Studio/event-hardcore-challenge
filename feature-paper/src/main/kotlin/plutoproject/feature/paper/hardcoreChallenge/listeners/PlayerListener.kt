@@ -15,6 +15,7 @@ import plutoproject.framework.paper.util.coroutine.runSync
 object PlayerListener : Listener {
     @EventHandler
     suspend fun PlayerJoinEvent.e() {
+        if (player.isInChallenge) return
         if (!player.hasPermission(CHALLENGE_NO_AUTO_START_PERMISSION)) {
             startChallenge(player)
         }
@@ -27,6 +28,7 @@ object PlayerListener : Listener {
 
     @EventHandler
     suspend fun PlayerDeathEvent.e() {
+        if (!player.isInChallenge) return
         isCancelled = true
         player.health = player.getAttribute(Attribute.MAX_HEALTH)!!.value
         stopChallenge(player)

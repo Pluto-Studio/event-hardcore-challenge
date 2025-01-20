@@ -9,12 +9,16 @@ import kotlinx.coroutines.delay
 import net.kyori.adventure.util.Ticks
 import org.bukkit.GameMode
 import org.bukkit.Material
+import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Player
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import plutoproject.feature.paper.api.randomTeleport.RandomTeleportManager
 import plutoproject.feature.paper.api.randomTeleport.RandomTeleportOptions
 import plutoproject.framework.common.util.chat.palettes.*
 import plutoproject.framework.common.util.data.collection.mutableConcurrentSetOf
 import plutoproject.framework.common.util.time.ticks
+import plutoproject.framework.paper.util.coroutine.withSync
 import plutoproject.framework.paper.util.world.location.Position2D
 
 const val CHALLENGE_NO_AUTO_START_PERMISSION = "hardcore.no_auto_start"
@@ -34,6 +38,14 @@ val ChallengeRandomTeleportOptions = RandomTeleportOptions(
     maxAttempts = 5,
     cost = 0.0,
     blacklistedBiomes = emptySet(),
+)
+
+val PotionEffectWhenRespawn = PotionEffect(
+    PotionEffectType.RESISTANCE,
+    5 * 20,
+    255,
+    false,
+    false
 )
 
 val Player.isInChallenge: Boolean get() = this in inChallenge
@@ -65,9 +77,14 @@ suspend fun stopChallenge(player: Player, restart: Boolean = true) {
     }
 }
 
-suspend fun onChallengeStart(player: Player) {
-    player.gameMode = GameMode.SURVIVAL
+suspend fun onChallengeStart(player: Player) = player.withSync {
+    player.health = player.getAttribute(Attribute.MAX_HEALTH)!!.value
+    player.foodLevel = 20
+    player.saturation = 20f
+    player.clearActivePotionEffects()
+    player.addPotionEffect(PotionEffectWhenRespawn)
     performRandomTeleport(player)
+    player.gameMode = GameMode.SURVIVAL
     player.send {
         text("挑战已开始，利用规则存活下去吧！") with mochaPink
     }
@@ -82,7 +99,7 @@ suspend fun onChallengeStart(player: Player) {
     }
 }
 
-suspend fun onChallengeFailed(player: Player, restart: Boolean = true) {
+suspend fun onChallengeFailed(player: Player, restart: Boolean = true) = player.withSync {
     player.gameMode = GameMode.SPECTATOR
     player.showTitle {
         mainTitle {
@@ -94,7 +111,7 @@ suspend fun onChallengeFailed(player: Player, restart: Boolean = true) {
             fadeOut(Ticks.duration(20))
         }
     }
-    if (!restart) return
+    if (!restart) return@withSync
     delay(60.ticks)
     player.send {
         text("正在为你开启新一轮挑战...") with mochaSubtext0
@@ -104,5 +121,8 @@ suspend fun onChallengeFailed(player: Player, restart: Boolean = true) {
 }
 
 suspend fun performRandomTeleport(player: Player) {
+    if (RandomTeleportManager.isInCooldown(player)) {
+        RandomTeleportManager.getCooldown(player)?.finish()
+    }
     RandomTeleportManager.launchSuspend(player, player.world, ChallengeRandomTeleportOptions)
 }
