@@ -66,16 +66,22 @@ object PlayerListener : Listener {
         if (entity !is Player) return
         val player = entity as Player
 
+        println("$player got attack")
+
         val damagerType = if (damager is Projectile) {
             val projectile = damager as Projectile
             val shooter = projectile.shooter as? Entity ?: return
             shooter.type
         } else damager.type
 
+        println("damagerType: $damagerType")
+
         if (EntityTags.UNDEADS.isTagged(damagerType)) {
             val randomValue = Random.nextDouble()
-            if (randomValue >= 0.05) return
+            println("RandomValue: $randomValue")
+            if (randomValue >= 0.20) return
             player.applyUndeadNegativeEffect()
+            println("Applied Negative Effect")
         }
     }
 

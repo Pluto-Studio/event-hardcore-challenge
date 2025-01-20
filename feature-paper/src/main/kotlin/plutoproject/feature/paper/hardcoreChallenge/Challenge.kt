@@ -57,7 +57,7 @@ val PotionEffectWhenRespawn = PotionEffect(
     10 * 20,
     255,
     true,
-    false
+    true
 )
 
 val Player.isInChallenge: Boolean get() = this in inChallenge
@@ -98,7 +98,8 @@ suspend fun stopChallenge(player: Player, restart: Boolean = true) {
 suspend fun onChallengeStart(player: Player) = player.withSync {
     player.health = player.attributeMaxHealth
     player.foodLevel = 20
-    player.saturation = 20f
+    player.saturation = 5f
+    player.exhaustion = 0f
     player.updateMaxHealth(2.0)
     player.resetAdvancements()
     player.clearActivePotionEffects()
@@ -238,11 +239,11 @@ suspend fun Player.giveAdvancementReward(advancement: Advancement) {
 }
 
 val UndeadNegativeEffect = PotionEffect(
-    PotionEffectType.RESISTANCE,
+    PotionEffectType.WITHER,
     5 * 20,
     3,
     true,
-    false
+    true
 )
 
 fun Player.applyUndeadNegativeEffect() {
