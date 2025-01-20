@@ -1,16 +1,22 @@
 package plutoproject.feature.paper.hardcoreChallenge.listeners
 
+import io.papermc.paper.tag.EntityTags
 import org.bukkit.Material
 import org.bukkit.attribute.Attribute
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.player.PlayerAdvancementDoneEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import plutoproject.feature.paper.hardcoreChallenge.*
 import plutoproject.framework.paper.util.coroutine.runSync
+import kotlin.random.Random
 
 object PlayerListener : Listener {
     @EventHandler
@@ -53,5 +59,28 @@ object PlayerListener : Listener {
         runSync {
             inventory.setItemInOffHand(keepOffhandItem)
         }
+    }
+
+    @EventHandler
+    fun EntityDamageByEntityEvent.e() {
+        if (entity !is Player) return
+        val player = entity as Player
+
+        val damagerType = if (damager is Projectile) {
+            val projectile = damager as Projectile
+            val shooter = projectile.shooter as? Entity ?: return
+            shooter.type
+        } else damager.type
+
+        if (EntityTags.UNDEADS.isTagged(damagerType)) {
+            val randomValue = Random.nextDouble()
+            if (randomValue >= 0.05) return
+            player.applyUndeadNegativeEffect()
+        }
+    }
+
+    @EventHandler
+    suspend fun PlayerAdvancementDoneEvent.e() {
+        player.giveAdvancementReward(advancement)
     }
 }
