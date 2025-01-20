@@ -11,5 +11,6 @@ data class UserModel(
     val isInChallenge: Boolean = false,
     val joinedChallengeBefore: Boolean = false,
     val failedRounds: Int = 0,
+    val lastRoundStart: Long? = null,
     @Serializable(BigDecimalSerializer::class) val coin: BigDecimal = BigDecimal.ZERO,
 )

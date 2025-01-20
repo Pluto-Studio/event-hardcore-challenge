@@ -6,6 +6,7 @@ import ink.pmc.advkt.send
 import ink.pmc.advkt.showTitle
 import ink.pmc.advkt.title.*
 import kotlinx.coroutines.delay
+import net.coreprotect.CoreProtect
 import net.kyori.adventure.util.Ticks
 import org.bukkit.GameMode
 import org.bukkit.Material
@@ -19,13 +20,17 @@ import org.bukkit.potion.PotionEffectType
 import plutoproject.feature.paper.api.randomTeleport.RandomTeleportManager
 import plutoproject.feature.paper.api.randomTeleport.RandomTeleportOptions
 import plutoproject.framework.common.util.chat.palettes.*
+import plutoproject.framework.common.util.coroutine.runAsync
 import plutoproject.framework.common.util.data.collection.mutableConcurrentSetOf
+import plutoproject.framework.common.util.roundTo2
+import plutoproject.framework.common.util.time.currentTimestampMillis
 import plutoproject.framework.common.util.time.ticks
 import plutoproject.framework.common.util.trimmedString
 import plutoproject.framework.paper.util.coroutine.withSync
 import plutoproject.framework.paper.util.plugin
 import plutoproject.framework.paper.util.world.location.Position2D
 import java.math.BigDecimal
+import java.time.Instant
 import kotlin.random.Random
 
 const val CHALLENGE_NO_AUTO_START_PERMISSION = "hardcore.no_auto_start"
@@ -65,7 +70,11 @@ suspend fun startChallenge(player: Player) {
     inChallenge.add(player)
     var model = UserRepository.findById(player.uniqueId) ?: UserModel(player.uniqueId)
     if (!model.isInChallenge) {
-        model = model.copy(isInChallenge = true, joinedChallengeBefore = true)
+        model = model.copy(
+            isInChallenge = true,
+            joinedChallengeBefore = true,
+            lastRoundStart = currentTimestampMillis
+        )
         UserRepository.saveOrUpdate(model)
         onChallengeStart(player)
     }
@@ -129,6 +138,11 @@ suspend fun onChallengeFailed(player: Player, restart: Boolean = true) = player.
         text("正在为你开启新一轮挑战...") with mochaSubtext0
     }
     player.clearTitle()
+    runAsync {
+        val model = UserRepository.findById(player.uniqueId) ?: UserModel(player.uniqueId)
+        if (model.lastRoundStart == null) return@runAsync
+        player.rollbackActions(Instant.ofEpochMilli(model.lastRoundStart))
+    }
     startChallenge(player)
 }
 
@@ -184,23 +198,42 @@ fun Player.resetAdvancements() {
     }
 }
 
+fun Player.rollbackActions(start: Instant) {
+    val end = Instant.now()
+    if (end < start) {
+        return
+    }
+    val startMills = start.toEpochMilli()
+    val endMills = end.toEpochMilli()
+    val secs = ((endMills - startMills) / 1000).toInt()
+    CoreProtect.getInstance().api.performRollback(
+        secs,
+        listOf(name),
+        null,
+        null,
+        null,
+        null,
+        0,
+        null,
+    )
+}
+
 suspend fun Player.giveAdvancementReward(advancement: Advancement) {
     val key = advancement.key.key
     if (key.startsWith("recipes") || key.contains("/root")) return
-    println("Reward: $key")
     val beforeHealthReward = attributeMaxHealth
-    val healthReward = Random.nextInt(1, 3).toDouble()
-    val coinReward = Random.nextInt(1, 20).toBigDecimal()
+    val healthReward = Random.nextDouble(0.0, 1.5).roundTo2()
+    val coinReward = Random.nextDouble(1.0, 20.0).roundTo2().toBigDecimal()
     addMaxHealth(healthReward)
     addCoin(coinReward)
     send {
         text("进度达成！你因此获得了 ") with mochaPink
         if (attributeMaxHealth > beforeHealthReward) {
             text("${healthReward.trimmedString()} ") with mochaText
-            text(" 点额外生命值与 ") with mochaPink
+            text("点额外生命值与 ") with mochaPink
         }
         text("$coinReward ") with mochaText
-        text("挑战币") with mochaPink
+        text("个挑战币") with mochaPink
     }
 }
 
