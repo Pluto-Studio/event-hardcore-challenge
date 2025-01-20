@@ -223,7 +223,7 @@ suspend fun Player.giveAdvancementReward(advancement: Advancement) {
     val key = advancement.key.key
     if (key.startsWith("recipes") || key.contains("/root")) return
     val beforeHealthReward = attributeMaxHealth
-    val healthReward = Random.nextDouble(0.0, 1.5).roundTo2()
+    val healthReward = Random.nextDouble(1.0, 2.0).roundTo2()
     val coinReward = Random.nextDouble(1.0, 20.0).roundTo2().toBigDecimal()
     addMaxHealth(healthReward)
     addCoin(coinReward)
